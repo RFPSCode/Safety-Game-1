@@ -1147,16 +1147,29 @@ async function importVoiceFiles(files){let all=null,map=null;
 async function loadVoice(){try{const pk=await VDB.get();let buf;
   if(pk&&pk.all&&pk.map){VO.map=pk.map;buf=b64bytes(pk.all);document.getElementById('vrst').classList.remove('hide');document.getElementById('vimp').textContent='🎙 已用匯入的語音（'+pk.n+' 句）';}
   else{try{const r=await fetch('voice/map.txt');if(r.ok){const m=JSON.parse(await r.text());if(m&&Object.keys(m).length)VO.map=m;}}catch(e){}
-  buf=await fetchBuf('voice/all.txt');}const el=new Audio(URL.createObjectURL(new Blob([buf],{type:'audio/mpeg'})));el.preload='auto';
-  await new Promise((ok,ng)=>{el.oncanplaythrough=ok;el.onerror=ng;setTimeout(ok,4000);});VO.el=el;VO.ok=true;GAME.voiceOK=true;}catch(e){console.warn('voice file',e);}}
+  buf=await fetchBuf('voice/all.txt');}
+  // decode the whole voice file once (Web Audio) and play each line from memory: sample-accurate, no seeking
+  // inside the MP3 (some encoders' MP3s make <audio> stall after a seek), and works the same on iPhone/iPad
+  try{const O=window.OfflineAudioContext||window.webkitOfflineAudioContext;const dc=new O(1,1,24000);
+    const ab=buf.buffer?buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.byteLength):buf.slice(0);
+    VO.ab=await new Promise((ok,ng)=>{const r=dc.decodeAudioData(ab,ok,ng);if(r&&r.then)r.then(ok,ng);});VO.ok=true;GAME.voiceOK=true;GAME.voiceMode='webaudio';return;}catch(e){console.warn('voice decode, using <audio>',e);}
+  const el=new Audio(URL.createObjectURL(new Blob([buf],{type:'audio/mpeg'})));el.preload='auto';
+  await new Promise((ok,ng)=>{el.oncanplaythrough=ok;el.onerror=ng;setTimeout(ok,4000);});VO.el=el;VO.ok=true;GAME.voiceOK=true;GAME.voiceMode='element';}catch(e){console.warn('voice file',e);}}
+function vNow(){const c=VO.cur;if(!c)return 0;return c.src?c.s+(AC.currentTime-c.at):VO.el.currentTime;}
 function voiceUnlock(){if(!VO.el||VO.unl)return;VO.unl=true;try{VO.el.muted=true;const p=VO.el.play();if(p)p.then(()=>{VO.el.pause();VO.el.muted=false;}).catch(()=>{VO.el.muted=false;});}catch(e){}}
 function voicePlay(key,ch){const m=VO.map[key];if(!VO.ok||!VOICE||!m||GAME.auto)return null;voiceStop();
+  if(VO.ab){const a=ac();if(!a)return null;return new Promise(res=>{try{
+      if(!VO.g){VO.g=a.createGain();VO.g.gain.value=1;VO.g.connect(a.destination);}
+      const src=a.createBufferSource();src.buffer=VO.ab;src.connect(VO.g);const off=Math.max(0,m[0]-0.03),at=a.currentTime+0.02;
+      src.start(at,off,m[1]+0.06);src.onended=()=>{if(VO.cur&&VO.cur.src===src)voiceStop();};
+      VO.cur={s:off,e:m[0]+m[1],lip:m[2],ch,res,t0:performance.now(),src,at,lipS:m[0]};
+      if(MUS.bus&&MUS.on)MUS.bus.gain.setTargetAtTime(MUS.vol*0.45,a.currentTime,0.15);}catch(e){res();}});}
   return new Promise(res=>{const el=VO.el;try{el.currentTime=Math.max(0,m[0]-0.04);el.muted=false;const p=el.play();if(p)p.catch(()=>{voiceStop();});}catch(e){res();return;}
     VO.cur={s:m[0],e:m[0]+m[1],lip:m[2],ch,res,t0:performance.now()};if(MUS.bus&&AC&&MUS.on)MUS.bus.gain.setTargetAtTime(MUS.vol*0.45,AC.currentTime,0.15);});}
-function voiceStop(){const c=VO.cur;if(!c)return;VO.cur=null;try{VO.el.pause();}catch(e){}if(c.ch)c.ch.lipV=null;if(MUS.bus&&AC&&MUS.on)MUS.bus.gain.setTargetAtTime(MUS.vol,AC.currentTime,0.3);c.res();}
-function voiceTick(){const c=VO.cur;if(!c)return;const t=VO.el.currentTime;
-  if(t>=c.e||VO.el.ended||performance.now()-c.t0>(c.e-c.s)*1000+2500){voiceStop();return;}
-  if(c.ch){const i=Math.floor((t-c.s)*25);c.ch.lipV=i>=0&&i<c.lip.length?(+c.lip[i])/9:0;}}
+function voiceStop(){const c=VO.cur;if(!c)return;VO.cur=null;try{if(c.src){c.src.onended=null;c.src.stop();}else VO.el.pause();}catch(e){}if(c.ch)c.ch.lipV=null;if(MUS.bus&&AC&&MUS.on)MUS.bus.gain.setTargetAtTime(MUS.vol,AC.currentTime,0.3);c.res();}
+function voiceTick(){const c=VO.cur;if(!c)return;const t=vNow();
+  if(t>=c.e||(!c.src&&VO.el.ended)||performance.now()-c.t0>(c.e-c.s)*1000+2500){voiceStop();return;}
+  if(c.ch){const i=Math.floor((t-(c.lipS!=null?c.lipS:c.s))*25);c.ch.lipV=i>=0&&i<c.lip.length?(+c.lip[i])/9:0;}}
 
 
 /* ================= WORLD ================= */
@@ -2130,7 +2143,7 @@ async function bootVRM(){const go=$('#go'),lb=$('#lbar'),bar=lb.querySelector('i
   lb.classList.add('hide');go.classList.remove('hide');go.disabled=false;GAME.vrm=!!VRM_ME;GAME.ready=true;}
 GAME.runCase=id=>{busy=true;$('#title').classList.add('hide');musicPlay('campus');return runCase(id);};
 GAME.start=()=>$('#go').click();
-window.__vp=voicePlay;window.__dbg={makeDevil,makeAngel,thumbFor,renderer,THREE,SRGB,V3,thumbs,PORTRAIT,say,FX,storyOn};GAME._dbg={cmShow,cmHide,reward:(id)=>reward(CASES[id]),gameOver:(id)=>gameOver(CASES[id],CASES[id].key.opts[1]),verdict:(id)=>overlay(`<h2>⚖️ 真實判決警示</h2><p>這個情境改編自真實的法院判決：</p>${caseCard(CASES[id])}<div class="btns"><button class="btn blue big" data-a="ok">我知道了</button></div>`,'verdict'),fxRays,fxConfetti,fxHearts,fxSparks,bravo,walkTo,FX,rig,ROLE,VO,caseCard,CASES,SRC,MAP,PLACES,pl:()=>player,setMode:m=>mode=m,camera,setLook,save,VCH,getVRMChar,npc,campus,LIVE};
+window.__vp=voicePlay;window.__dbg={makeDevil,makeAngel,thumbFor,renderer,THREE,SRGB,V3,thumbs,PORTRAIT,say,FX,storyOn,VO,vNow};GAME._dbg={cmShow,cmHide,reward:(id)=>reward(CASES[id]),gameOver:(id)=>gameOver(CASES[id],CASES[id].key.opts[1]),verdict:(id)=>overlay(`<h2>⚖️ 真實判決警示</h2><p>這個情境改編自真實的法院判決：</p>${caseCard(CASES[id])}<div class="btns"><button class="btn blue big" data-a="ok">我知道了</button></div>`,'verdict'),fxRays,fxConfetti,fxHearts,fxSparks,bravo,walkTo,FX,rig,ROLE,VO,caseCard,CASES,SRC,MAP,PLACES,pl:()=>player,setMode:m=>mode=m,camera,setLook,save,VCH,getVRMChar,npc,campus,LIVE};
 bootVRM();
 
 </script>
