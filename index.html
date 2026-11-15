@@ -344,6 +344,7 @@ body.jail #cv{filter:grayscale(1) contrast(1.2) brightness(.72)}
 #title .school{position:relative;z-index:2;margin:2px 0 -6px;transform:rotate(-2.5deg)}
 #title .school span{display:inline-block;background:#fff;color:#1d2466;border:3px solid #1d2466;border-radius:999px;padding:2px 22px 3px;font-size:clamp(16px,2.8vw,28px);font-weight:900;letter-spacing:4px;box-shadow:0 4px 0 rgba(15,18,70,.5)}
 #title .sub span{letter-spacing:6px}
+#title .school small{font-size:.55em;letter-spacing:2px;margin-right:.5em;color:#e8304f;vertical-align:.12em}
 #title .tagl{margin-top:12px;font-size:clamp(13px,1.9vw,17px);font-weight:900;color:#fff;letter-spacing:3px;background:rgba(29,36,102,.78);border:2px solid rgba(255,210,63,.9);border-radius:999px;padding:3px 18px 4px;box-shadow:0 3px 0 rgba(10,12,50,.45)}
 #hud .top .hudb{width:56px;height:56px;border-radius:50%;background-color:#fff;box-shadow:0 0 0 3px var(--ink),0 5px 0 3px rgba(29,36,102,.35);background-origin:content-box;padding:3px}
 #story .stb{position:absolute;left:12px;top:max(5px,.9vh);width:clamp(40px,7.4vh,60px);height:clamp(40px,7.4vh,60px);border-radius:50%;background-color:#fff;background-origin:content-box;padding:2px;box-shadow:0 0 0 2px #1d2466,0 3px 8px rgba(0,0,0,.45);opacity:0;transition:opacity .5s}
@@ -373,14 +374,14 @@ body.jail #cv{filter:grayscale(1) contrast(1.2) brightness(.72)}
 <div id="title">
  <div class="tscrim"></div><div class="tspark"><i></i><i></i><i></i><i></i><i></i><i></i></div>
  <div class="logo"><div class="hero"><i class="sch"></i></div>
-  <div class="school"><span>龍山國小之</span></div>
+  <div class="school"><span><small>桃園市</small>龍山國小之</span></div>
   <h1><span class="l1">校園安全</span><span class="l2">時光機</span></h1>
   <div class="sub"><span>EPISODE 1</span></div><div class="tagl">根據真實法院判決改編</div></div>
  <div class="box panel">
   <div class="row"><span class="lab">選擇主角</span><button class="chip pc on" data-g="b"><span class="ph" id="ph_b">👦</span><b>男生</b></button><button class="chip pc" data-g="g"><span class="ph" id="ph_g">👧</span><b>女生</b></button></div>
   <div class="startw"><div id="lbar"><i></i><b>載入角色中… 0%</b></div><button class="btn big hide" id="go">開始冒險 ▶</button><div class="note">走到發光的地點，進入真實判決改編的情境。<br>小心！小惡魔會控制你……</div></div>
  </div>
- <div class="foot">龍山國小　·　校園安全教育遊戲　·　<a href="#" id="vimp" style="color:inherit">🎙 匯入語音</a><span id="vrst" class="hide">　·　<a href="#" id="vrstA" style="color:inherit">還原內建語音</a></span><input type="file" id="vfile" accept=".txt,.json,text/plain" multiple style="display:none"></div>
+ <div class="foot">桃園市龍山國小　·　校園安全教育遊戲　·　<a href="#" id="vimp" style="color:inherit">🎙 匯入語音</a><span id="vrst" class="hide">　·　<a href="#" id="vrstA" style="color:inherit">還原內建語音</a></span><input type="file" id="vfile" accept=".txt,.json,text/plain" multiple style="display:none"></div>
 </div>
 
 <div id="hud" class="hide">
@@ -1773,7 +1774,7 @@ async function rewind(S,key){const fr=REC||[];REC=null;hush();FX.hideAll();$('#s
   applyState(S,key);await wait(0.2);document.body.classList.remove('rewinding');$('#rw').classList.add('hide');flash('#fffbe6',700);SFX.angel();}
 
 /* ---------- overlays ---------- */
-function overlay(html,cls=''){return new Promise(res=>{const o=$('#ovl');o.innerHTML=`<div class="ovl ${cls}">${/\bfull\b/.test(cls)?'<i class="sch ovb"></i><b class="ovt">龍山國小</b>':''}<div class="panel">${html}</div></div>`;o.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{SFX.click();o.innerHTML='';res(b.dataset.a);});
+function overlay(html,cls=''){return new Promise(res=>{const o=$('#ovl');o.innerHTML=`<div class="ovl ${cls}">${/\bfull\b/.test(cls)?'<i class="sch ovb"></i><b class="ovt">桃園市龍山國小</b>':''}<div class="panel">${html}</div></div>`;o.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{SFX.click();o.innerHTML='';res(b.dataset.a);});
   if(GAME.auto)setTimeout(()=>{const b=o.querySelector('[data-a]');const want=GAME.ovl&&GAME.ovl(o.innerText);o.innerHTML='';res(want||(b&&b.dataset.a));},10);});}
 const caseCard=(C,extra='')=>`<div class="case"><div class="hd"><span class="no">${C.icon}</span>${C.title}</div><div class="ds">${C.desc}</div><span class="pill">${C.award}</span></div>${extra}`;
 const lawHTML=ids=>`<div class="laws">${ids.map((i,n)=>`<div class="law"><span class="n">${n+1}</span><div>${LAWS[i]}</div></div>`).join('')}</div>`;
